@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.png" alt="DropRadar logo" width="360"></p>
+
 # DropRadar
 
 **Keeps new music releases from going dormant.**

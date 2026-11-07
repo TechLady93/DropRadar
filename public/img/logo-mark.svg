@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5B8CFF"/><stop offset="1" stop-color="#8A5CFF"/>
+    </linearGradient>
+    <radialGradient id="sw" cx="120" cy="132" r="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5B8CFF" stop-opacity=".05"/><stop offset="1" stop-color="#5B8CFF" stop-opacity=".55"/>
+    </radialGradient>
+  </defs>
+  <!-- headphone band -->
+  <path d="M38 132 A82 82 0 0 1 202 132" fill="none" stroke="url(#g)" stroke-width="14" stroke-linecap="round"/>
+  <!-- ear cups -->
+  <rect x="22" y="112" width="30" height="62" rx="14" fill="url(#g)"/>
+  <rect x="188" y="112" width="30" height="62" rx="14" fill="url(#g)"/>
+  <!-- radar -->
+  <circle cx="120" cy="132" r="68" fill="#0E1430" stroke="url(#g)" stroke-width="6"/>
+  <circle cx="120" cy="132" r="44" fill="none" stroke="#5B8CFF" stroke-opacity=".45" stroke-width="3"/>
+  <circle cx="120" cy="132" r="21" fill="none" stroke="#5B8CFF" stroke-opacity=".45" stroke-width="3"/>
+  <path d="M120 132 L120 64 A68 68 0 0 1 176 94 Z" fill="url(#sw)"/>
+  <line x1="120" y1="132" x2="176" y2="94" stroke="#9DB6FF" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="120" cy="132" r="7" fill="#9DB6FF"/>
+  <circle cx="158" cy="106" r="7.5" fill="#FF9D45"/>
+  <circle cx="89" cy="108" r="6.5" fill="#FF9D45"/>
+  <circle cx="148" cy="166" r="6.5" fill="#FF9D45"/>
+</svg>

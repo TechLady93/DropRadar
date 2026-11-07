@@ -2,7 +2,7 @@
 .appbar { position: sticky; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px); }
 .appbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 10px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font: 700 1rem/1 var(--f-display); }
-.brand-mark { width: 26px; height: 26px; color: var(--accent); }
+.brand-mark { width: 30px; height: 30px; display: block; }
 .blip-fill { fill: var(--signal); }
 .appbar-right { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .user-name { font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
