@@ -2,6 +2,8 @@
 
 **Keeps new music releases from going dormant.**
 
+**Live demo:** https://dropradar-bv2c.onrender.com (choose *Try the live demo*; the free server may take about 30 seconds to wake up)
+
 Most independent releases get heard by almost no one in their first two weeks, which is exactly when every platform decides what to push. DropRadar matches a song with the curators, creators, DJs and communities that fit its sound, runs a 30-day rollout plan, collects fans through a smart link, and protects the release from fake-stream scams.
 
 > Concept, product design and security requirements by **Joycelynn "Joyce" Okezie** ([@TechLady93](https://github.com/TechLady93)).
