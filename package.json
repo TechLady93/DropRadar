@@ -1,0 +1,24 @@
+{
+  "name": "dropradar",
+  "version": "1.0.0",
+  "description": "DropRadar: keeps new music releases from going dormant with matched curator outreach, a 30-day rollout plan, fan-capture smart links and release protection.",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node --no-warnings server/index.js",
+    "dev": "node --no-warnings --watch server/index.js",
+    "seed": "node --no-warnings server/seed.js"
+  },
+  "author": "Joycelynn Okezie (TechLady93)",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

@@ -1,0 +1,22 @@
+/* Public smart-link page: one column, phone first, tinted by the release's cover colour. */
+body { min-height: 100%; background: radial-gradient(120% 60% at 50% 0%, color-mix(in srgb, var(--c, var(--accent)) 22%, var(--bg)) 0%, var(--bg) 70%); background-color: var(--bg); }
+.sl { max-width: 460px; padding-block: 40px 24px; display: grid; gap: 22px; justify-items: center; text-align: center; }
+.sl-cover { width: min(240px, 70vw); aspect-ratio: 1; max-width: 100%; border-radius: 14px; background: var(--c, var(--accent)); position: relative; overflow: hidden; box-shadow: var(--shadow); }
+.sl-cover::before { content: ""; position: absolute; inset: 16%; border-radius: 50%; border: 3px solid rgba(255,255,255,.5); }
+.sl-cover::after { content: ""; position: absolute; inset: 34%; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); }
+.sl-cover span { position: absolute; left: 50%; top: 50%; width: 9%; aspect-ratio: 1; transform: translate(-50%, -50%); background: #fff; border-radius: 50%; }
+.sl h1 { font-size: clamp(1.7rem, 7vw, 2.3rem); }
+.sl .artist { font-size: 1.1rem; font-weight: 600; }
+.sl .story { color: var(--muted); max-width: 40ch; }
+.sl-buttons { width: 100%; display: grid; gap: 10px; }
+.sl-btn { display: flex; justify-content: space-between; align-items: center; padding: 15px 18px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-weight: 600; }
+.sl-btn:hover { border-color: var(--ink); }
+.sl-btn .go { font: 600 0.8rem var(--f-mono); color: var(--muted); }
+.sl-fan { width: 100%; text-align: left; display: grid; gap: 10px; }
+.sl-fan h2 { font-size: 1rem; text-align: center; }
+.sl-fan .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.sl-fan .row input { flex: 1 1 200px; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.sl-ok { background: var(--good-soft); color: var(--good); padding: 12px; border-radius: var(--r-sm); font-weight: 600; text-align: center; }
+.sl-foot { text-align: center; font-size: 0.8rem; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+.sl-date { font: 600 0.78rem var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }

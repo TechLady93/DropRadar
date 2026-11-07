@@ -1,0 +1,9 @@
+{
+  "name": "DropRadar",
+  "short_name": "DropRadar",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#EDF0F5",
+  "theme_color": "#3438F0",
+  "icons": [{ "src": "/img/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
