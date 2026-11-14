@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Agent Squad — DropRadar</title>
+<meta name="theme-color" content="#3438F0">
+<link rel="icon" href="/img/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Unbounded:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/agents.css">
+</head>
+<body>
+<header class="appbar">
+  <div class="wrap appbar-inner">
+    <a class="brand" href="/agents" aria-label="DropRadar Agent Squad">
+      <img class="brand-mark" src="/img/logo-mark.svg" alt="" width="32" height="32">
+      <span>DropRadar</span>
+    </a>
+    <div class="appbar-right" id="userbar" hidden>
+      <a class="btn btn-ghost btn-sm" href="/app">Releases</a>
+      <span class="muted user-name" id="userName"></span>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn" type="button">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main class="agents-page wrap">
+
+  <!-- Hero -->
+  <section class="agents-hero">
+    <p class="eyebrow">Agentic Marketing</p>
+    <h1>Your AI <span>Agent Squad</span></h1>
+    <p class="muted">Three agents. One mission: get your release heard. Enter your song details and run Social, Voice, and Lead Gen together.</p>
+  </section>
+
+  <!-- Input form -->
+  <form id="agentForm" class="agents-form panel">
+    <div class="form-top">
+      <h3>Song details</h3>
+      <button type="button" class="btn btn-ghost btn-sm" id="demoSongBtn">✨ Try Demo Song</button>
+    </div>
+
+    <div class="form-section">
+      <div class="field-row">
+        <label>Song title
+          <input name="title" id="title" placeholder='"Midnight Drive"' required maxlength="100">
+        </label>
+        <label>Artist name
+          <input name="artist" id="artistName" placeholder="Your artist name" required maxlength="60">
+        </label>
+      </div>
+      <div class="field-row">
+        <label>Genre
+          <select name="genre" id="genre" required>
+            <option value="">Select genre…</option>
+          </select>
+        </label>
+        <label>Release date
+          <input name="releaseDate" id="releaseDate" type="date" required>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>Vibe / Mood (pick up to 3)</h3>
+      <div class="chips" id="moodChips"></div>
+    </div>
+
+    <div class="form-section">
+      <h3>Optional — helps the Lead Gen Agent match better</h3>
+      <div class="field-row">
+        <label>BPM
+          <input name="bpm" id="bpm" type="number" min="40" max="220" placeholder="e.g. 104">
+        </label>
+        <label>Hometown
+          <input name="hometown" id="hometown" placeholder="e.g. Lagos, Nigeria" maxlength="60">
+        </label>
+      </div>
+      <label>Sounds like
+        <input name="soundsLike" id="soundsLike" placeholder='e.g. "Burna Boy meets Tems"' maxlength="120">
+      </label>
+    </div>
+
+    <div class="agents-submit">
+      <button type="submit" class="btn btn-primary btn-signal btn-lg" id="runAgentsBtn">Run Agent Squad 🚀</button>
+      <span class="hint submit-hint">Runs Social, Voice, and Lead Gen in parallel</span>
+    </div>
+  </form>
+
+  <!-- Results: three agent cards -->
+  <section id="agentResults" class="agent-results" hidden>
+
+    <!-- Social Media Agent -->
+    <article class="agent-card" id="card-social">
+      <header class="agent-card-head">
+        <div class="agent-icon social">📱</div>
+        <div>
+          <p class="eyebrow agent-label">Social Media Agent</p>
+          <h3>14-Day Content Calendar</h3>
+        </div>
+        <span class="agent-status" id="status-social"></span>
+      </header>
+      <div id="agent-social-body" class="agent-card-body"></div>
+    </article>
+
+    <!-- Voice Agent -->
+    <article class="agent-card" id="card-voice">
+      <header class="agent-card-head">
+        <div class="agent-icon voice">🎙️</div>
+        <div>
+          <p class="eyebrow agent-label">Voice Agent</p>
+          <h3>Radio-Style Hype Drop</h3>
+        </div>
+        <span class="agent-status" id="status-voice"></span>
+      </header>
+      <div id="agent-voice-body" class="agent-card-body"></div>
+    </article>
+
+    <!-- Lead Gen Agent -->
+    <article class="agent-card" id="card-leads">
+      <header class="agent-card-head">
+        <div class="agent-icon leads">✉️</div>
+        <div>
+          <p class="eyebrow agent-label">Lead Gen Agent</p>
+          <h3>Curator &amp; Blog Pitch Emails</h3>
+        </div>
+        <span class="agent-status" id="status-leads"></span>
+      </header>
+      <div id="agent-leads-body" class="agent-card-body"></div>
+    </article>
+
+  </section>
+
+</main>
+
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="/js/agents.js"></script>
+</body>
+</html>

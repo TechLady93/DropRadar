@@ -1,12 +1,29 @@
 // DropRadar API server.
 const path = require('node:path');
 const crypto = require('node:crypto');
+const fs = require('node:fs');
 const express = require('express');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+
+// Load .env in development. In production, the host injects environment variables.
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    const envPath = path.join(__dirname, '..', '.env');
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8');
+      for (const line of content.split('\n')) {
+        const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+        if (!m) continue;
+        const [, key, val] = m;
+        if (!(key in process.env)) process.env[key] = val.replace(/^["']|["']$/g, '');
+      }
+    }
+  } catch (err) { console.error('Could not load .env file:', err.message); }
+}
 
 const { db, logSecurity } = require('./db');
 const { seed } = require('./seed');
@@ -367,11 +384,105 @@ app.get('/go/:slug/:platform', (req, res) => {
   res.redirect(302, url);
 });
 
+// --- Agent Squad API -----------------------------------------------------------
+app.post('/api/agents/social', requireAuth, (req, res) => {
+  const b = req.body || {};
+  const title = clean(b.title, 100);
+  const artist = clean(b.artist, 60);
+  const genre = E.GENRES.includes(b.genre) ? b.genre : null;
+  const moods = Array.isArray(b.moods) ? b.moods.filter(m => E.MOODS.includes(m)).slice(0, 3) : [];
+  const date = clean(b.releaseDate, 10);
+  if (!title) return res.status(400).json({ error: 'Add the song title.' });
+  if (!artist) return res.status(400).json({ error: 'Add the artist name.' });
+  if (!genre) return res.status(400).json({ error: 'Pick a genre.' });
+  if (!moods.length) return res.status(400).json({ error: 'Pick at least one mood.' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return res.status(400).json({ error: 'Pick a release date.' });
+  const release = { title, genre, moods, release_date: date, bpm: b.bpm || null, hometown: b.hometown || '', sounds_like: b.soundsLike || '' };
+  res.json({ calendar: E.buildSocialCalendar(release, artist) });
+});
+
+app.post('/api/agents/voice', requireAuth, async (req, res) => {
+  const b = req.body || {};
+  const title = clean(b.title, 100);
+  const artist = clean(b.artist, 60);
+  const genre = E.GENRES.includes(b.genre) ? b.genre : null;
+  const moods = Array.isArray(b.moods) ? b.moods.filter(m => E.MOODS.includes(m)).slice(0, 3) : [];
+  const date = clean(b.releaseDate, 10);
+  if (!title) return res.status(400).json({ error: 'Add the song title.' });
+  if (!artist) return res.status(400).json({ error: 'Add the artist name.' });
+  if (!genre) return res.status(400).json({ error: 'Pick a genre.' });
+  if (!moods.length) return res.status(400).json({ error: 'Pick at least one mood.' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return res.status(400).json({ error: 'Pick a release date.' });
+  const release = { title, genre, moods, release_date: date };
+  const script = E.buildHypeScript(release, artist);
+
+  if (!process.env.ELEVENLABS_API_KEY) {
+    return res.json({ script, audioUrl: null, unavailable: 'Add an ElevenLabs API key to your .env file to generate the hype drop.' });
+  }
+
+  try {
+    const audioDir = path.join(__dirname, '..', 'public', 'audio');
+    fs.mkdirSync(audioDir, { recursive: true });
+    const filename = `agent-voice-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.mp3`;
+    const filePath = path.join(audioDir, filename);
+
+    const eleven = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': process.env.ELEVENLABS_API_KEY
+      },
+      body: JSON.stringify({
+        text: script,
+        model_id: 'eleven_monolingual_v1',
+        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+      })
+    });
+
+    if (!eleven.ok) throw new Error(`ElevenLabs API returned ${eleven.status}`);
+
+    const arrayBuffer = await eleven.arrayBuffer();
+    fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
+    res.json({ script, audioUrl: `/audio/${filename}` });
+  } catch (err) {
+    console.error('Voice Agent error:', err.message);
+    res.json({ script, audioUrl: null, unavailable: 'Voice generation is unavailable right now. Copy the script and record it, or add a valid ElevenLabs API key.' });
+  }
+});
+
+app.post('/api/agents/leads', requireAuth, (req, res) => {
+  const b = req.body || {};
+  const title = clean(b.title, 100);
+  const artist = clean(b.artist, 60);
+  const genre = E.GENRES.includes(b.genre) ? b.genre : null;
+  const moods = Array.isArray(b.moods) ? b.moods.filter(m => E.MOODS.includes(m)).slice(0, 3) : [];
+  const date = clean(b.releaseDate, 10);
+  if (!title) return res.status(400).json({ error: 'Add the song title.' });
+  if (!artist) return res.status(400).json({ error: 'Add the artist name.' });
+  if (!genre) return res.status(400).json({ error: 'Pick a genre.' });
+  if (!moods.length) return res.status(400).json({ error: 'Pick at least one mood.' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return res.status(400).json({ error: 'Pick a release date.' });
+  const release = {
+    title, genre, moods, release_date: date,
+    release_type: 'single', slug: 'agent-squad-preview',
+    bpm: b.bpm || null, hometown: clean(b.hometown, 60) || '',
+    sounds_like: clean(b.soundsLike, 120) || '', story: ''
+  };
+  const outlets = db.prepare('SELECT * FROM outlets').all();
+  const matches = E.matchOutlets(release, outlets, 8).map(o => {
+    const pitch = E.buildPitch(release, o, artist, `${req.protocol}://${req.get('host')}`);
+    return { id: o.id, name: o.name, kind: o.kind, platform: o.platform, score: o.score, reasons: o.reasons, pitch };
+  });
+  res.json({ leads: matches });
+});
+
 // --- Static front end --------------------------------------------------------------
 const PUB = path.join(__dirname, '..', 'public');
 app.use(express.static(PUB, { extensions: ['html'], maxAge: IS_PROD ? '1h' : 0 }));
 app.get('/r/:slug', (req, res) => res.sendFile(path.join(PUB, 'link.html')));
 app.get(['/app', '/app/*'], (req, res) => res.sendFile(path.join(PUB, 'app.html')));
+app.get('/agents', (req, res) => res.sendFile(path.join(PUB, 'agent-squad.html')));
 app.use('/api/', (req, res) => res.status(404).json({ error: 'Not found.' }));
 app.use((req, res) => res.status(404).sendFile(path.join(PUB, '404.html')));
 
