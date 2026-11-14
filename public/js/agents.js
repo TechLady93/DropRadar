@@ -147,22 +147,36 @@
   // --- Render Voice -----------------------------------------------------------
   function renderVoice(data) {
     const body = $('#agent-voice-body');
+    const fallbackNote = data.fallback ? `<p class="voice-fallback-note">${esc(data.fallback)}</p>` : '';
+    const hypeEn = data.hypeEn || data.audioUrl;
+    const hypeEs = data.hypeEs;
     let audioHtml = '';
-    if (data.audioUrl) {
-      audioHtml = `
-        <div class="voice-player">
-          <audio controls src="${esc(data.audioUrl)}"></audio>
-        </div>
-        <div class="voice-actions">
-          <a class="btn btn-ghost btn-sm" href="${esc(data.audioUrl)}" download="dropradar-hype-drop.mp3">⬇ Download MP3</a>
+    if (hypeEn) {
+      audioHtml += `
+        <div class="voice-drop">
+          <h4 class="voice-drop-label">🇺🇸 English hype drop</h4>
+          <div class="voice-player"><audio controls src="${esc(hypeEn)}"></audio></div>
+          <div class="voice-actions">
+            <a class="btn btn-ghost btn-sm" href="${esc(hypeEn)}" download="dropradar-hype-en.mp3">⬇ Download</a>
+          </div>
         </div>`;
-    } else if (data.unavailable) {
-      audioHtml = `<div class="voice-unavailable">${esc(data.unavailable)}</div>`;
-    } else {
-      audioHtml = '<div class="voice-unavailable">Voice generation is unavailable. Copy the script and record it, or add an ElevenLabs API key.</div>';
+    }
+    if (hypeEs) {
+      audioHtml += `
+        <div class="voice-drop">
+          <h4 class="voice-drop-label">🇪🇸 Spanish hype drop</h4>
+          <div class="voice-player"><audio controls src="${esc(hypeEs)}"></audio></div>
+          <div class="voice-actions">
+            <a class="btn btn-ghost btn-sm" href="${esc(hypeEs)}" download="dropradar-hype-es.mp3">⬇ Download</a>
+          </div>
+        </div>`;
+    }
+    if (!hypeEn && !hypeEs) {
+      audioHtml = '<div class="voice-unavailable">Voice generation is unavailable. Copy the script and record it yourself.</div>';
     }
     body.innerHTML = `
       <div class="voice-script">${esc(data.script)}</div>
+      ${fallbackNote}
       ${audioHtml}
       <div class="voice-actions">
         <button class="btn btn-ghost btn-sm copy-btn" data-copy="${esc(data.script)}">Copy script</button>
@@ -174,22 +188,34 @@
   function renderLeads(leads) {
     const body = $('#agent-leads-body');
     body.innerHTML = leads.length
-      ? '<ul class="lead-list">' + leads.map(l => `
+      ? '<ul class="lead-list">' + leads.map(l => {
+        const reasons = l.reasons || (l.reason ? [l.reason] : []);
+        const voiceNoteHtml = l.voiceNoteUrl ? `
+          <div class="voice-note">
+            <h4 class="voice-drop-label">🎙️ Voice-note pitch</h4>
+            <div class="voice-player"><audio controls src="${esc(l.voiceNoteUrl)}"></audio></div>
+            <div class="lead-actions">
+              <a class="btn btn-ghost btn-sm" href="${esc(l.voiceNoteUrl)}" download="dropradar-voice-note.mp3">⬇ Download</a>
+            </div>
+          </div>` : '';
+        return `
         <li class="lead">
           <div class="lead-head">
             <span class="lead-name">${esc(l.name)}</span>
             <span class="lead-kind">${esc(l.kind)}</span>
             <span class="lead-score">${l.score}% fit</span>
           </div>
-          <div class="lead-reasons">${l.reasons.map(r => esc(r)).join(' · ')}</div>
+          <div class="lead-reasons">${reasons.map(r => esc(r)).join(' · ')}</div>
           <div class="lead-pitch">
             <div class="lead-subject">Subject: ${esc(l.pitch.subject)}</div>
             <div class="lead-body">${esc(l.pitch.body)}</div>
           </div>
+          ${voiceNoteHtml}
           <div class="lead-actions">
             <button class="btn btn-ghost btn-sm copy-btn" data-copy="Subject: ${esc(l.pitch.subject)}\n\n${esc(l.pitch.body)}">Copy email</button>
           </div>
-        </li>`).join('') + '</ul>'
+        </li>`;
+      }).join('') + '</ul>'
       : '<p class="muted">No curator matches found for this genre and mood combination. Try different values.</p>';
     bindCopy();
   }
@@ -202,12 +228,12 @@
       tomorrow.setDate(tomorrow.getDate() + 14);
       const dateStr = tomorrow.toISOString().slice(0, 10);
 
-      $('#title').value = 'Neon Ghost';
-      $('#artistName').value = user.artist_name || 'Luna Vale';
+      $('#title').value = 'In Mind';
+      $('#artistName').value = user.artist_name || 'Jxxiii';
       $('#releaseDate').value = dateStr;
       $('#bpm').value = '118';
-      $('#hometown').value = 'Brooklyn, NY';
-      $('#soundsLike').value = 'Phoebe Bridgers meets MUNA';
+      $('#hometown').value = 'South Florida';
+      $('#soundsLike').value = 'Tame Impala meets Beach House';
 
       const genreSel = $('#genre');
       if (genreSel && genreSel.tagName === 'SELECT') {
@@ -218,7 +244,7 @@
       }
 
       $$('input[name="moods"]').forEach(el => el.checked = false);
-      ['Reflective', 'Moody', 'Confident'].forEach(target => {
+      ['Reflective', 'Moody', 'Late-night'].forEach(target => {
         const el = $(`input[name="moods"][value="${target}"]`);
         if (el) el.checked = true;
       });

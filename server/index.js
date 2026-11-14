@@ -417,7 +417,11 @@ app.post('/api/agents/voice', requireAuth, async (req, res) => {
   const script = E.buildHypeScript(release, artist);
 
   if (!process.env.ELEVENLABS_API_KEY) {
-    return res.json({ script, audioUrl: null, unavailable: 'Add an ElevenLabs API key to your .env file to generate the hype drop.' });
+    return res.json({
+      script, audioUrl: null,
+      hypeEn: '/audio/hype-en.mp3', hypeEs: '/audio/hype-es.mp3',
+      fallback: 'Pre-generated demo drops. Add an ElevenLabs API key for live generation.'
+    });
   }
 
   try {
@@ -444,10 +448,14 @@ app.post('/api/agents/voice', requireAuth, async (req, res) => {
 
     const arrayBuffer = await eleven.arrayBuffer();
     fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
-    res.json({ script, audioUrl: `/audio/${filename}` });
+    res.json({ script, audioUrl: `/audio/${filename}`, hypeEn: `/audio/${filename}`, hypeEs: '/audio/hype-es.mp3' });
   } catch (err) {
     console.error('Voice Agent error:', err.message);
-    res.json({ script, audioUrl: null, unavailable: 'Voice generation is unavailable right now. Copy the script and record it, or add a valid ElevenLabs API key.' });
+    res.json({
+      script, audioUrl: null,
+      hypeEn: '/audio/hype-en.mp3', hypeEs: '/audio/hype-es.mp3',
+      fallback: 'Live voice generation failed. Playing pre-generated demo drops.'
+    });
   }
 });
 
@@ -470,9 +478,10 @@ app.post('/api/agents/leads', requireAuth, (req, res) => {
     sounds_like: clean(b.soundsLike, 120) || '', story: ''
   };
   const outlets = db.prepare('SELECT * FROM outlets').all();
-  const matches = E.matchOutlets(release, outlets, 8).map(o => {
-    const pitch = E.buildPitch(release, o, artist, `${req.protocol}://${req.get('host')}`);
-    return { id: o.id, name: o.name, kind: o.kind, platform: o.platform, score: o.score, reasons: o.reasons, pitch };
+  const matches = E.matchOutlets(release, outlets, 8).map((o, i) => {
+    const pitch = E.buildPitch(release, o, artist, '');
+    pitch.body = pitch.body.replace(/Listen here: .*/, 'Listen here: [your smart link]');
+    return { id: o.id, name: o.name, kind: o.kind, platform: o.platform, score: o.score, reasons: o.reasons, pitch, voiceNoteUrl: i === 0 ? '/audio/voice-note-sfl.mp3' : null };
   });
   res.json({ leads: matches });
 });
