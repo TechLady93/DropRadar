@@ -90,7 +90,7 @@ function seed() {
 
   // Smart-link clicks and fan sign-ups over the past three weeks (demo data).
   const insClick = db.prepare('INSERT INTO clicks (release_id, platform, source, day) VALUES (?, ?, ?, ?)');
-  const insFan = db.prepare('INSERT OR IGNORE INTO fans (release_id, email, source, created_at) VALUES (?, ?, ?, ?)');
+  const insFan = db.prepare("INSERT OR IGNORE INTO fans (release_id, email, source, created_at, unsub_token, consent) VALUES (?, ?, ?, ?, lower(hex(randomblob(16))), 'sample')");
   const platforms = ['youtube', 'youtube', 'audiomack', 'apple', 'spotify', 'bandcamp', 'youtube', 'audiomack'];
   const sources = ['tiktok', 'tiktok', 'instagram', 'email', 'curator', 'direct', 'tiktok', 'instagram'];
   let rng = 7;

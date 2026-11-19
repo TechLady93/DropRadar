@@ -177,13 +177,16 @@ function buildPitch(release, outlet, artistName, baseUrl) {
     radio: `I think it would fit your rotation`
   }[outlet.kind] || 'I think it is a fit';
   const link = `${process.env.PUBLIC_URL || baseUrl || 'http://localhost:3000'}/r/${release.slug}`;
+  // DJs and creators are people, so greet them by name; outlets with a team get "team".
+  const greeting = ['dj', 'creator'].includes(outlet.kind) ? `Hi ${outlet.name},` : `Hi ${outlet.name} team,`;
+  const likes = list(String(release.sounds_like || '').split(',').map(x => x.trim()).filter(Boolean));
   const subject = `${release.genre} ${release.release_type}: "${release.title}" by ${artistName}`;
   const body = [
-    `Hi ${outlet.name} team,`,
+    greeting,
     '',
     `I'm ${artistName}${release.hometown ? `, an artist from ${release.hometown}` : ''}. My new ${release.release_type}, "${release.title}", ${release.release_date >= new Date().toISOString().slice(0, 10) ? 'comes out' : 'came out'} on ${formatDate(release.release_date)}.`,
     '',
-    `It's a ${moods.length ? list(moods) + ' ' : ''}${release.genre} record${release.bpm ? ` at ${release.bpm} BPM` : ''}${release.sounds_like ? `, for fans of ${release.sounds_like}` : ''}. ${kindLine}.`,
+    `It's a ${moods.length ? list(moods) + ' ' : ''}${release.genre} record${release.bpm ? ` at ${release.bpm} BPM` : ''}${likes ? `, for fans of ${likes}` : ''}. ${kindLine}.`,
     release.story ? '' : null,
     release.story ? release.story : null,
     '',
@@ -200,18 +203,25 @@ function formatDate(iso) {
   return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
 
-function buildContent(release, artistName) {
+// Hashtags people actually use for each genre (R&B is #rnb, not #RB).
+const GENRE_TAGS = { 'R&B': 'rnb', 'Hip-Hop': 'hiphop', 'Lo-fi': 'lofi', 'Neo-Soul': 'neosoul' };
+const genreTag = g => GENRE_TAGS[g] || g.toLowerCase().replace(/[^a-z]/g, '');
+
+function buildContent(release, artistName, today = new Date().toISOString().slice(0, 10)) {
   const t = release.title;
   const mood = (release.moods && release.moods[0] || '').toLowerCase();
-  const tag = release.genre.replace(/[^A-Za-z]/g, '');
+  const tag = genreTag(release.genre);
+  // Before release day, captions point to the date; from release day on, they say it's out.
+  const out = release.release_date > today ? `out ${formatDate(release.release_date)}` : 'out now';
   return {
     captions: [
-      { platform: 'TikTok / Reels', text: `the part of "${t}" I can't stop replaying 🔁 out ${formatDate(release.release_date)} · link in bio` },
-      { platform: 'TikTok / Reels', text: `POV: you finally made the ${mood || 'song'} song you needed to hear. "${t}" is out now.` },
-      { platform: 'Instagram feed', text: `"${t}" is here. ${release.story ? release.story.split('.')[0] + '.' : 'This one means a lot.'} Tap the link in bio and tell me your favourite line.` },
+      { platform: 'TikTok / Reels', text: `the part of "${t}" I can't stop replaying 🔁 ${out} · link in bio` },
+      { platform: 'TikTok / Reels', text: `POV: you needed a ${mood || 'new'} song and found this one. "${t}" is ${out}.` },
+      { platform: 'Instagram feed', text: `"${t}" is ${out}. ${release.story ? release.story.split('.')[0] + '.' : 'This one means a lot.'} Tap the link in bio and tell me your favourite line.` },
       { platform: 'YouTube Shorts', text: `${t} by ${artistName} (official audio) #${tag} #newmusic` },
-      { platform: 'X / Threads', text: `made "${t}" for anyone who needs a ${mood || 'new'} song this week. it's out now.` }
+      { platform: 'X / Threads', text: `made "${t}" for anyone who needs a ${mood || 'new'} song this week. it's ${out}.` }
     ],
+    calendar: buildCalendar(release, artistName),
     videoIdeas: [
       { title: 'The hook, three ways', detail: 'Film the same 10-second hook in three locations. Post one every few days and keep the one that performs.' },
       { title: 'Lyric on screen', detail: 'Static shot, the strongest lyric typed on screen, the hook playing underneath. Simple and very shareable.' },
@@ -219,8 +229,70 @@ function buildContent(release, artistName) {
       { title: 'Reaction stitch', detail: 'Play the song for a friend or family member and film their honest first reaction.' },
       { title: 'Use my sound', detail: 'Show the move, outfit or prompt you want people to copy, then ask them to try it.' }
     ],
-    hashtags: [`#${tag}`, '#newmusic', '#independentartist', `#${tag}music`, release.hometown ? `#${release.hometown.split(',')[0].replace(/\s/g, '')}music` : '#upandcoming']
+    hashtags: [`#${tag}`, '#newmusic', '#independentartist', `#${tag}music`, release.hometown ? `#${release.hometown.split(',')[0].replace(/[^A-Za-z]/g, '').toLowerCase()}music` : '#upandcoming']
   };
+}
+
+// --- 30-day content calendar --------------------------------------------------------
+// One post idea a day for the 30 days from release day, in four themed weeks plus a
+// wrap-up. Day 1 is release day. Ideas adapt to the song's mood, genre, story, hometown
+// and "sounds like" artists, and every idea is something a solo artist can film on a phone.
+function buildCalendar(release, artistName) {
+  const t = release.title;
+  const a = artistName;
+  const moods = release.moods || [];
+  const mood = (moods[0] || 'new').toLowerCase();
+  const tag = genreTag(release.genre);
+  const danceable = ['Energetic', 'Party', 'Confident', 'Summer'].some(m => moods.includes(m)) ||
+    ['Afrobeats', 'Amapiano', 'Dancehall', 'Reggaeton', 'House', 'Drill'].includes(release.genre);
+  const storyLine = release.story ? release.story.split('.')[0].trim() + '.' : '';
+  const city = (release.hometown || '').split(',')[0].trim();
+  const likes = list(String(release.sounds_like || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 2));
+  const tags = (...extra) => [`#${tag}`, '#newmusic', '#independentartist', ...extra];
+
+  const W1 = 'Week 1 · Launch', W2 = 'Week 2 · The story', W3 = 'Week 3 · Community', W4 = 'Week 4 · Second wind', W5 = 'Wrap-up';
+  const ideas = [
+    { week: W1, platform: 'TikTok + Reels', title: 'It\'s out: the hook', detail: 'Ten seconds of the hook with "OUT NOW" on screen. Post the same clip on every short-form app.', caption: `"${t}" is out now. This is the part I can't stop replaying. Link in bio.`, tags: tags('#outnow') },
+    { week: W1, platform: 'Instagram Stories', title: 'Thank you + first reactions', detail: 'Screenshot the first messages and comments you got (blur names if needed). Social proof makes the next person press play.', caption: `Y'all showed up for "${t}" yesterday. Thank you. Keep the messages coming.`, tags: [] },
+    { week: W1, platform: 'TikTok', title: 'Lyric on screen', detail: 'Static shot, your strongest line typed on screen, the song playing underneath. Simple and very shareable.', caption: `The line in "${t}" that says it best. Which one hits you?`, tags: tags('#lyrics') },
+    { week: W1, platform: 'Reels', title: 'Why I made it', detail: 'Talk to the camera for 20 to 30 seconds about why this song exists. No script, just tell it like you would to a friend.', caption: storyLine ? `${storyLine} That's how "${t}" started.` : `Why I made "${t}", in 30 seconds.`, tags: tags('#storytime') },
+    danceable
+      ? { week: W1, platform: 'TikTok', title: 'Use my sound: the move', detail: 'Show one easy move or gesture on the hook and ask people to try it. Easy beats impressive.', caption: `Try this to "${t}" and tag me. I'm reposting my favourites.`, tags: tags('#dancechallenge') }
+      : { week: W1, platform: 'TikTok', title: 'Use my sound: the POV', detail: `Give people a POV prompt to film over the song, like "POV: you needed a ${mood} song tonight".`, caption: `POV: you needed a ${mood} song tonight. Use the sound and tag me.`, tags: tags('#pov') },
+    { week: W1, platform: 'YouTube Shorts', title: 'Voice memo to final', detail: 'The first rough voice memo or beat, cutting straight to the finished song. Viewers love seeing the before and after.', caption: `"${t}" started as a voice memo. Here's how it ended up.`, tags: tags('#musicproducer') },
+    { week: W1, platform: 'All platforms', title: 'Week one, thank you', detail: 'Thank everyone who listened and ask for one thing: send the song to one friend who needs it.', caption: `One week of "${t}". If it hit for you, send it to one person who needs it today.`, tags: tags() },
+
+    { week: W2, platform: 'Instagram feed', title: 'Behind-the-scenes photo dump', detail: 'Five to eight photos from the studio, writing sessions or the cover shoot. Real and unpolished works best.', caption: `Behind "${t}". Swipe to see how it came together.`, tags: tags('#behindthescenes') },
+    { week: W2, platform: 'TikTok', title: 'Reaction stitch', detail: 'Play the song for a friend or family member and film their honest first reaction.', caption: `Played "${t}" for someone close to me for the first time. Watch their face.`, tags: tags('#reaction') },
+    { week: W2, platform: 'YouTube Shorts', title: 'Stripped-down snippet', detail: 'Sing or play the hook acoustic, a cappella or over just piano or guitar. It shows the song works without the production.', caption: `"${t}", stripped down.`, tags: tags('#acoustic', '#livemusic') },
+    { week: W2, platform: 'Instagram feed', title: 'Lyric breakdown carousel', detail: 'A carousel with one lyric per slide and a short line on what it means to you.', caption: `What "${t}" is really about. Swipe through.`, tags: tags('#songwriter') },
+    { week: W2, platform: 'TikTok', title: 'The hook, three ways', detail: 'Same 10-second hook filmed in three places or outfits. Keep whichever one performs best.', caption: `"${t}" in three different places. Which one fits it best?`, tags: tags() },
+    { week: W2, platform: 'Instagram Stories', title: 'Ask me anything about the song', detail: 'Put up a question box and answer the best questions with short video replies over the next day.', caption: `Ask me anything about "${t}".`, tags: [] },
+    { week: W2, platform: 'YouTube', title: 'Visualizer or lyric video', detail: 'Post a simple visualizer or lyric video. YouTube keeps working for months and builds subscribers you keep.', caption: `${t} by ${a} (visualizer). Out everywhere now.`, tags: tags('#lyricvideo') },
+
+    { week: W3, platform: 'TikTok', title: 'Finish the lyric', detail: 'Play a line, stop before the last word, and ask people to duet or comment the ending.', caption: `Finish this line from "${t}". Duet me.`, tags: tags('#duet') },
+    { week: W3, platform: 'Reels', title: 'Fan video repost', detail: 'Repost or react to a fan video using your song. If you have none yet, ask for them and promise to repost.', caption: `You're using "${t}" and I see you. Keep them coming and I'll repost.`, tags: tags() },
+    { week: W3, platform: 'Instagram Stories', title: 'Favourite-part poll', detail: 'A poll between two parts of the song (the hook vs the bridge). Easy engagement, and it tells you which clip to push next.', caption: `Settle this: which part of "${t}" goes harder?`, tags: [] },
+    { week: W3, platform: 'TikTok', title: 'A day in my life, release month', detail: 'A day as an independent artist with a song out: day job, studio, pitching, posting. Honesty builds fans.', caption: 'A day in my life with a new song out. Independent artist edition.', tags: tags('#dayinmylife') },
+    { week: W3, platform: 'Reels', title: 'Shout out who showed love', detail: 'Thank the curators, DJs, blogs and creators who supported the song and tag them. They share it, and others notice.', caption: `Thank you to everyone who added, played or shared "${t}". This is how independent music moves.`, tags: tags('#supportindependentartists') },
+    { week: W3, platform: 'Instagram Live', title: 'Listening session', detail: 'Go live, play the song, talk through it and answer questions. Tell your fan list the time a day before.', caption: `Live tonight: listening to "${t}" together and answering your questions.`, tags: [] },
+    { week: W3, platform: 'Email to fans', title: 'Fan email: week 3 update', detail: 'Email your DropRadar fan list. Share what happened so far and ask them to save the song and share it with one friend.', caption: `Subject: three weeks of "${t}" (and a favour)`, tags: [] },
+
+    { week: W4, platform: 'TikTok', title: 'Sped-up or slowed version', detail: 'Post a sped-up or slowed-down version of the hook. Only post a version you have released or plan to release.', caption: `"${t}" but sped up. Should I drop this version?`, tags: tags('#spedup') },
+    { week: W4, platform: 'Reels', title: 'If you like them, try this', detail: likes ? `Tell people who you sound like and why. Fans of ${likes} are your easiest new listeners.` : 'Name two artists your song sits next to. Their fans are your easiest new listeners.', caption: likes ? `If you listen to ${likes}, "${t}" is for you.` : `If your playlist is full of ${mood} songs, "${t}" belongs on it.`, tags: tags() },
+    { week: W4, platform: 'YouTube Shorts', title: city ? `${city} shoot` : 'Hometown shoot', detail: city ? `Film the hook somewhere people from ${city} recognise. Local pride travels.` : 'Film the hook somewhere that means something to you. Place gives the song a story.', caption: city ? `"${t}" in ${city}.` : `"${t}" where it all started.`, tags: tags(city ? `#${city.replace(/[^A-Za-z]/g, '').toLowerCase()}` : '#hometown') },
+    { week: W4, platform: 'TikTok', title: 'Put it on a trend', detail: 'Pick a trending video format this week and film it with your song as the audio instead of the trending sound.', caption: `Tried the trend with "${t}" instead. Better or worse?`, tags: tags('#trend') },
+    { week: W4, platform: 'Instagram Stories', title: 'Honest numbers', detail: 'Share one real milestone, big or small: fans signed up, a playlist add, a message that moved you. Real beats hype.', caption: `Real talk: what "${t}" has done in its first month.`, tags: [] },
+    { week: W4, platform: 'Reels', title: 'Performance clip', detail: 'Film the song live: a show, an open mic, or a living-room performance. Live clips win over curators and bookers.', caption: `"${t}" live.`, tags: tags('#livemusic') },
+    { week: W4, platform: 'TikTok', title: 'Remix or feature call-out', detail: 'Ask producers or artists to remix it or hop on a verse. A remix restarts the release cycle with a new audience.', caption: `Who should remix "${t}"? Producers, show me what you've got.`, tags: tags('#remix', '#producer') },
+
+    { week: W5, platform: 'Instagram feed', title: '30 days of the song', detail: 'A carousel recap: best fan video, best comment, best moment, and a thank you.', caption: `30 days of "${t}". Thank you for every play, share and message.`, tags: tags() },
+    { week: W5, platform: 'All platforms + email', title: 'What\'s next', detail: 'Thank everyone, tease what you are working on next, and point people to your smart link to get notified first.', caption: `"${t}" was chapter one. Something new is coming. Tap the link in bio so you hear it first.`, tags: tags('#comingsoon') }
+  ];
+  return ideas.map((x, i) => {
+    const { tags: hashtags, ...rest } = x;
+    return { day: i + 1, date: addDays(release.release_date, i), ...rest, hashtags };
+  });
 }
 
 // --- Release Protection -------------------------------------------------------
@@ -238,7 +310,11 @@ const RED_FLAGS = [
   { re: /\b(viral|blow up|go viral|million(s)? of (streams|views))\b/i, sev: 'medium', why: 'Promises of going viral cannot be kept. Treat big-outcome promises with suspicion.' },
   { re: /(bit\.ly|tinyurl|t\.co|cutt\.ly|rb\.gy)\//i, sev: 'medium', why: 'Shortened links hide where they go. Check the real destination before clicking or logging in.' },
   { re: /\b(spotify|apple music|youtube)\s+(team|staff|support|partner)\b/i, sev: 'medium', why: 'Messages claiming to be platform staff via DM are usually impersonation. Platforms contact you through your official dashboard.' },
-  { re: /\b(bot[- ]?free|100% real|organic only|real human)\b.*\b(streams|plays)\b/i, sev: 'medium', why: 'Sellers who stress that bought streams are "real" are usually selling bot or click-farm traffic.' }
+  { re: /\b(bot[- ]?free|100% real|organic only|real human)\b.*\b(streams|plays)\b/i, sev: 'medium', why: 'Sellers who stress that bought streams are "real" are usually selling bot or click-farm traffic.' },
+  // Scams that avoid the word "guarantee": a price tied to a number of plays, or to adds on a set number of playlists.
+  { re: /\$\s?\d[\d,.]*[^.\n]{0,25}?\b(gets? you|buys?( you)?|for|delivers?|=)\s+\d[\d,.]*\s*k?\s*(streams|plays|listeners|followers|views)\b/i, sev: 'high', why: 'A price tied to a number of plays is buying streams, even when the word "guarantee" is missing. Platforms treat it as artificial streaming.' },
+  { re: /\b(pay|\$\s?\d[\d,.]*)[^.\n]{0,80}?\b(added|placed|featured)\s+(to|on|in)\s+\d+/i, sev: 'high', why: 'Paying to be added to a set number of playlists is buying placement. These networks are often full of bot listeners, which can get your song removed.' },
+  { re: /\bnetwork of \d[\d,]*\+?\s*(playlists|curators|pages|channels)\b/i, sev: 'medium', why: 'Large "playlist networks" for hire are a common front for botted playlists. Check the playlists yourself before paying anything.' }
 ];
 
 function scanMessage(text) {
@@ -269,6 +345,6 @@ const PROTECTION_CHECKLIST = [
 
 module.exports = {
   GENRES, MOODS, PLATFORMS, PLATFORM_LABELS,
-  analyzeRelease, matchOutlets, buildPlan, buildPitch, buildContent,
+  analyzeRelease, matchOutlets, buildPlan, buildPitch, buildContent, buildCalendar,
   scanMessage, PROTECTION_CHECKLIST, addDays, formatDate
 };

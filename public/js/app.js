@@ -253,7 +253,7 @@
   // ---- Release detail -------------------------------------------------------------------------
   const TABS = [
     ['plan', 'Rollout plan'], ['matches', 'Matches'], ['content', 'Content'],
-    ['link', 'Smart link'], ['protect', 'Protect'], ['results', 'Results']
+    ['link', 'Smart link'], ['fans', 'Fans'], ['protect', 'Protect'], ['results', 'Results']
   ];
   let REL = null;
 
@@ -271,6 +271,7 @@
     const counts = {
       plan: `${done}/${REL.plan.length}`,
       matches: REL.matches.length,
+      fans: REL.results.fans,
       protect: REL.results.alerts.length ? `${REL.results.alerts.length} alert` : null
     };
     view.innerHTML = `
@@ -299,7 +300,7 @@
       <section class="tab-body" id="tabBody"></section>`;
     applyVars();
     $$('.tabs button').forEach(b => b.onclick = () => { history.replaceState({}, '', '#' + b.dataset.tab); renderRelease(id, true); });
-    ({ plan: tabPlan, matches: tabMatches, content: tabContent, link: tabLink, protect: tabProtect, results: tabResults })[tab](id);
+    ({ plan: tabPlan, matches: tabMatches, content: tabContent, link: tabLink, fans: tabFans, protect: tabProtect, results: tabResults })[tab](id);
     applyVars($('#tabBody'));
   }
 
@@ -422,7 +423,8 @@
     bg.onclick = close; $('#drClose', dr).onclick = close;
     $('#pCopy', dr).onclick = () => copy(`Subject: ${$('#pSubject', dr).value}\n\n${$('#pBody', dr).value}`, 'Pitch copied');
     $('#pApprove', dr).onclick = async () => {
-      await api(`/api/releases/${id}/pitch/${outletId}`, { method: 'PUT', body: { status: 'approved' } });
+      try { await api(`/api/releases/${id}/pitch/${outletId}`, { method: 'PUT', body: { status: 'approved' } }); }
+      catch (err) { toast(err.message); return; }
       close(); toast('Marked approved'); renderRelease(id, true);
     };
     $('#pSubject', dr).focus();
@@ -432,10 +434,31 @@
   function tabContent() {
     const c = REL.content;
     const body = $('#tabBody');
+    const weeks = [...new Set(c.calendar.map(x => x.week))];
+    const today = todayISO();
+    const postText = x => [x.caption, x.hashtags.join(' ')].filter(Boolean).join('\n\n');
     body.innerHTML = `
+      <section class="panel stack">
+        <div class="section-head"><h2>30-day content calendar</h2><button class="btn btn-ghost btn-sm" type="button" id="copyCal">Copy all 30</button></div>
+        <p class="muted">One post a day from release day through day 30, so the song keeps getting new reasons to be shared after the first week. Film a few in one sitting and schedule them.</p>
+      </section>
+      ${weeks.map(w => `
+        <section class="panel cal-week">
+          <h3>${esc(w)}</h3>
+          <ol class="cal-list">${c.calendar.filter(x => x.week === w).map(x => `
+            <li class="cal-day">
+              <div class="when"><span class="d">${fmtDate(x.date)}</span><span class="o">Day ${x.day}${x.date === today ? ' · today' : ''}</span></div>
+              <div class="what">
+                <div class="what-top"><strong>${esc(x.title)}</strong><span class="pill">${esc(x.platform)}</span></div>
+                <p class="why">${esc(x.detail)}</p>
+                <p class="cap">${esc(x.caption)}${x.hashtags.length ? `<br><span class="muted">${esc(x.hashtags.join(' '))}</span>` : ''}</p>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" data-day="${x.day}">Copy</button>
+            </li>`).join('')}</ol>
+        </section>`).join('')}
       <div class="cards-2">
         <section class="panel stack">
-          <div class="section-head"><h2>Captions</h2><span class="muted">Tap to copy</span></div>
+          <div class="section-head"><h2>Quick captions</h2><span class="muted">Tap to copy</span></div>
           <ul class="caption-list">${c.captions.map((x, i) => `
             <li class="caption"><div><span class="pill">${esc(x.platform)}</span><p>${esc(x.text)}</p></div>
               <button class="btn btn-ghost btn-sm" type="button" data-cap="${i}">Copy</button></li>`).join('')}</ul>
@@ -449,6 +472,8 @@
         <div class="section-head"><h2>Hashtags</h2><button class="btn btn-ghost btn-sm" type="button" id="copyTags">Copy all</button></div>
         <div class="chips">${c.hashtags.map(h => `<span class="pill pill-accent">${esc(h)}</span>`).join('')}</div>
       </section>`;
+    $$('[data-day]', body).forEach(b => b.onclick = () => copy(postText(c.calendar[b.dataset.day - 1]), `Day ${b.dataset.day} copied`));
+    $('#copyCal').onclick = () => copy(c.calendar.map(x => `DAY ${x.day} (${fmtDate(x.date)}) · ${x.platform} · ${x.title}\n${x.detail}\n${postText(x)}`).join('\n\n---\n\n'), '30-day calendar copied');
     $$('[data-cap]', body).forEach(b => b.onclick = () => copy(c.captions[b.dataset.cap].text, 'Caption copied'));
     $('#copyTags').onclick = () => copy(c.hashtags.join(' '), 'Hashtags copied');
   }
@@ -478,6 +503,43 @@
     $$('[data-src]').forEach(b => b.onclick = () => copy(`${url}?src=${b.dataset.src}`, 'Link copied'));
   }
 
+  // -- Fans
+  const SRC_LABEL = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', email: 'Fan email', curator: 'Curators', x: 'X', facebook: 'Facebook', direct: 'Direct / unknown' };
+  async function tabFans(id) {
+    const body = $('#tabBody');
+    body.innerHTML = '<p class="loading">Loading fans…</p>';
+    let F;
+    try { F = await api(`/api/releases/${id}/fans`); }
+    catch (err) { body.innerHTML = `<p class="error-msg">${esc(err.message)}</p>`; return; }
+    const shown = F.fans.slice(0, 200);
+    body.innerHTML = `
+      ${REL.isDemo ? '<p class="pill pill-signal">Demo account · sample fans</p>' : ''}
+      <section class="panel stack">
+        <div class="section-head"><h2>Fans you own</h2>
+          ${F.subscribed ? `<a class="btn btn-primary btn-sm" href="/api/releases/${id}/fans.csv" download>Download CSV</a>` : ''}</div>
+        <p class="muted">Everyone here gave you their email on your smart link. No algorithm sits between you and them, so on your next release you can reach every one of them directly.</p>
+        <div class="strip strip-2">
+          <div><span class="val">${nf.format(F.subscribed)}</span><span class="lbl">Subscribed</span></div>
+          <div><span class="val">${nf.format(F.unsubscribed)}</span><span class="lbl">Unsubscribed</span></div>
+        </div>
+      </section>
+      <section class="panel stack">
+        <h2>How to use your list</h2>
+        <ol class="howto">
+          <li><strong>Download the CSV.</strong> It only includes people who are still subscribed.</li>
+          <li><strong>Import it into a free email tool</strong> such as Mailchimp, Kit or Brevo (or Laylo for text-message drops).</li>
+          <li><strong>Keep unsubscribes working.</strong> Your email tool adds its own unsubscribe link. Each row also has a DropRadar <code>unsubscribe_link</code> you can paste into any email.</li>
+          <li><strong>Email on release day and every drop after.</strong> Early plays and saves from real fans are the signals streaming algorithms watch most.</li>
+        </ol>
+      </section>
+      <section class="panel stack">
+        <div class="section-head"><h2>Sign-ups</h2><span class="muted">${F.fans.length > 200 ? 'Newest 200 shown · the CSV has everyone' : 'Newest first'}</span></div>
+        ${shown.length ? `<div class="table-scroll"><table class="src-table fan-table"><thead><tr><th>Email</th><th>Came from</th><th>Joined</th><th>Status</th></tr></thead><tbody>${shown.map(f => `
+          <tr><td>${esc(f.email)}</td><td>${esc(SRC_LABEL[f.source] || f.source)}</td><td>${fmtDate(String(f.joined).slice(0, 10))}</td><td>${f.unsubscribed ? '<span class="pill">Unsubscribed</span>' : '<span class="pill pill-good">Subscribed</span>'}</td></tr>`).join('')}
+        </tbody></table></div>` : '<p class="muted">No fans yet. Share your smart link from the Smart link tab, and sign-ups will appear here.</p>'}
+      </section>`;
+  }
+
   // -- Protect
   async function tabProtect(id) {
     const body = $('#tabBody');
@@ -486,8 +548,9 @@
     body.innerHTML = `
       ${alerts.map(a => `
         <div class="alert-box" role="alert"><span class="dot"></span><div class="stack">
-          <strong>Unusual spike on ${fmtLong(a.day)}</strong>
-          <p>${nf.format(a.count)} clicks in one day against a recent average of ${nf.format(a.average)}. Sudden jumps from a single source can be fake traffic sent to your release. If you didn't run a campaign that day, report it to your distributor so the song isn't penalised.</p>
+          <strong>Unusual link traffic on ${fmtLong(a.day)}</strong>
+          <p>${nf.format(a.count)} clicks on your smart link in one day, against a recent average of ${nf.format(a.average)}. This alert watches your DropRadar link only. It can't see your streams.</p>
+          <p>If you didn't post or run a campaign that day, bots may be hitting your link. Open Spotify for Artists and check that day for a matching jump in streams from one playlist or one country. If you find one, report the playlist to your distributor and keep a screenshot, so the song isn't penalised for plays you didn't buy.</p>
         </div></div>`).join('')}
       <div class="cards-2">
         <section class="panel stack">
@@ -572,7 +635,7 @@
       ${REL.isDemo ? '<p class="pill pill-signal">Demo account · sample data</p>' : ''}
       <section class="panel stack">
         <div class="section-head"><h2>Smart-link clicks per day</h2>
-          <div class="legend"><span><i data-k="var(--accent)"></i>Clicks</span><span><i data-k="var(--signal)"></i>Release day</span>${R.alerts.length ? '<span><i data-k="var(--bad)"></i>Flagged spike</span>' : ''}</div></div>
+          <div class="legend"><span><i data-k="var(--accent)"></i>Clicks</span><span><i data-k="var(--signal)"></i>Release day</span>${R.alerts.length ? '<span><i data-k="var(--bad)"></i>Unusual link traffic</span>' : ''}</div></div>
         ${chart}
       </section>
       <div class="cards-2">

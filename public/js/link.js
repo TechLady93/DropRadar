@@ -32,7 +32,7 @@
         </div>
         <label class="hp" aria-hidden="true">Leave empty<input id="website" tabindex="-1" autocomplete="off"></label>
         <p class="error-msg" id="fanErr" hidden></p>
-        <p class="hint">Only ${esc(d.artist)} will use your email. Unsubscribe any time.</p>
+        <p class="hint">By joining, you agree to get emails from ${esc(d.artist)} about their music. Only ${esc(d.artist)} sees your email, it is never sold, and you can unsubscribe at any time. <a href="/privacy">Privacy policy</a></p>
       </form>`;
     document.getElementById('fanForm').onsubmit = async e => {
       e.preventDefault();

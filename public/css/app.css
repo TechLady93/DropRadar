@@ -207,3 +207,25 @@
 .loading { color: var(--muted); padding: 40px 0; text-align: center; }
 .plain-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .check-list label { font-weight: 600; display: grid; gap: 4px; }
+
+/* Fans tab */
+.strip.strip-2 { grid-template-columns: repeat(2, 1fr); }
+.src-table th { text-align: left; font: 600 0.75rem var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 8px; border-bottom: 1px solid var(--line); }
+.src-table th:first-child { padding-left: 0; }
+.fan-table td:first-child { font-weight: 500; white-space: normal; word-break: break-all; }
+.howto { padding-left: 1.2em; display: grid; gap: 10px; }
+.howto li { line-height: 1.55; }
+
+/* 30-day content calendar */
+.cal-week { display: grid; gap: 10px; }
+.cal-week h3 { font-size: 1rem; }
+.cal-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.cal-day { display: grid; grid-template-columns: 72px 1fr auto; gap: 14px; align-items: start; padding: 14px 0; border-top: 1px solid var(--line); }
+.cal-day .when { display: grid; gap: 2px; }
+.cal-day .when .d { font: 600 0.9rem var(--f-mono); }
+.cal-day .when .o { font: 500 0.75rem var(--f-mono); color: var(--muted); }
+.cal-day .what { display: grid; gap: 6px; min-width: 0; }
+.cal-day .what-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cal-day .cap { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 10px; font-size: 0.9rem; }
+@media (max-width: 640px) { .cal-day { grid-template-columns: 1fr; gap: 8px; } }
+.strip.strip-2 > div:nth-child(n) { border-bottom: 0; }
