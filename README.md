@@ -115,39 +115,9 @@ The free tier doesn't keep files between restarts, so the database resets to the
 
 All outlets in the demo are **fictional samples**. Clicks, fans and the traffic spike on the demo release are generated sample data, labelled as such in the app.
 
-## Agent Squad
+## Recognition
 
-Agent Squad turns DropRadar into an AI marketing team for indie artists. Instead of staring at a blank content calendar or copy-pasting the same pitch to dozens of curators, an artist enters a few song details and three agents run together to plan the first two weeks of promotion.
-
-**The problem it solves**
-
-Most independent artists do not have a marketing team. After a song is uploaded, the hardest part is knowing what to post, when to post it, what to say to curators, and how to make the release feel like an event. Agent Squad generates the work so the artist can review, edit, and ship it.
-
-**The three agents**
-
-| Agent | What it does |
-|---|---|
-| **Social Media Agent** | Builds a 14-day TikTok / Reels / Shorts content calendar. Each day gets a platform, a hook angle chosen from the genre and mood, a ready-to-post caption, and targeted hashtags. Artists can copy any caption with one click. |
-| **Voice Agent** | Writes and speaks a radio-style hype-drop script. When an ElevenLabs API key is configured, it generates an MP3 and serves it with an inline player and download button. Without a key, it still returns the script so the artist can record or paste it into ElevenLabs. |
-| **Lead Gen Agent** | Reuses DropRadar's existing outlet scoring engine to find the best-matching curators, blogs, DJs and communities, then writes a personalized pitch email for each one. Artists copy the email and send it themselves — nothing is sent automatically. |
-
-**How ElevenLabs is used**
-
-The Voice Agent uses ElevenLabs text-to-speech only when an `ELEVENLABS_API_KEY` is provided. The key is loaded from a `.env` file in development or from the host's environment in production. The generated MP3 is saved to `public/audio/` so it can be streamed and downloaded; that folder is ignored by Git. The app does not crash if the key is missing — it shows a friendly message and the script text instead.
-
-To enable voice generation locally, add your key to `.env`:
-
-```bash
-ELEVENLABS_API_KEY=your_key_here
-```
-
-Never commit the key. `.env` is already in `.gitignore`.
-
-**How to demo it**
-
-Open `/agents`, sign in, and click **✨ Try Demo Song** to auto-fill an indie release. Then press **Run Agent Squad 🚀** to watch Social, Voice, and Lead Gen run in parallel.
-
-Agent Squad was built with Mel, the DropRadar team's coding agent, to show how agentic workflows can sit alongside the existing rule-based engine without replacing it.
+🏆 **Winner, Miami AI Hackathon** (Buildersgiving, Mel × ElevenLabs), November 2026, as a solo entrant. The version demoed at the event is preserved under the [`v1.0-hackathon`](https://github.com/TechLady93/DropRadar/releases/tag/v1.0-hackathon) tag. The hackathon-only add-ons (Agent Squad and ElevenLabs voice) have since been removed so DropRadar stays focused and free to run.
 
 ## Roadmap
 
