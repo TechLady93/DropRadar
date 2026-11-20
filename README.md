@@ -123,7 +123,7 @@ The free tier doesn't keep files between restarts, so the database resets to the
 
 ## Notes on the demo data
 
-All outlets in the demo are **fictional samples**. Clicks, fans and the traffic spike on the demo release are generated sample data, labelled as such in the app.
+The demo runs on a real released single, **"In Mind" by JXXIII feat. S777** (2022), with its real Spotify, Apple Music and YouTube links, used with the artist's permission. The outlets are **fictional samples** until real curators opt in. The campaign dates, clicks, fans and the traffic spike are simulated so every feature has something to show, and the app's demo banner says so.
 
 ## Recognition
 

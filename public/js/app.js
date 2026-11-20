@@ -189,7 +189,7 @@
         <div class="form-section">
           <h3>The basics</h3>
           <div class="field-row">
-            <label>Song title<input id="title" maxlength="100" required placeholder="Ocean Drive"></label>
+            <label>Song title<input id="title" maxlength="100" required placeholder="In Mind"></label>
             <label>Type<select id="releaseType"><option value="single">Single</option><option value="EP">EP</option><option value="album">Album</option></select></label>
             <label>Release date<input id="releaseDate" type="date" value="${defDate}" required><span class="hint">Four weeks out gives editorial teams time to listen.</span></label>
           </div>
