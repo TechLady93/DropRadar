@@ -26,3 +26,6 @@ body { min-height: 100%; background: radial-gradient(120% 60% at 50% 0%, color-m
 .legal h2 { font-size: 1.1rem; margin-top: 12px; }
 .legal ul { padding-left: 1.2em; display: grid; gap: 6px; }
 .legal p, .legal li { line-height: 1.6; }
+
+.sl-cover.has-art::before, .sl-cover.has-art::after { display: none; }
+.sl-cover.has-art img { width: 100%; height: 100%; object-fit: cover; display: block; }

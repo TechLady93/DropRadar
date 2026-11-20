@@ -105,6 +105,8 @@ function addColumn(table, column, ddl) {
 addColumn('fans', 'unsub_token', 'unsub_token TEXT');
 addColumn('fans', 'unsubscribed_at', 'unsubscribed_at TEXT');
 addColumn('fans', 'consent', "consent TEXT NOT NULL DEFAULT ''");
+// Releases: optional cover artwork (a path under /img/covers). Falls back to the colour tile.
+addColumn('releases', 'cover_image', "cover_image TEXT NOT NULL DEFAULT ''");
 db.exec("UPDATE fans SET unsub_token = lower(hex(randomblob(16))) WHERE unsub_token IS NULL");
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS fans_unsub_token ON fans(unsub_token)');
 
