@@ -14,7 +14,7 @@
     const upcoming = d.releaseDate > today;
     const when = new Date(d.releaseDate + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
     el.innerHTML = `
-      <div class="sl-cover" aria-hidden="true"><span></span></div>
+      ${d.cover ? `<div class="sl-cover has-art"><img src="${esc(d.cover)}" alt="Cover art for ${esc(d.title)} by ${esc(d.artist)}"></div>` : '<div class="sl-cover" aria-hidden="true"><span></span></div>'}
       <div>
         <p class="sl-date">${upcoming ? 'Out ' + esc(when) : esc(d.genre) + ' ' + esc(d.type)}</p>
         <h1>${esc(d.title)}</h1>

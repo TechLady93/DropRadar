@@ -227,7 +227,7 @@ app.get('/api/meta', (req, res) => res.json({
 
 // --- Releases ------------------------------------------------------------------
 app.get('/api/releases', requireAuth, (req, res) => {
-  const rows = db.prepare(`SELECT r.id, r.slug, r.title, r.release_type, r.release_date, r.genre, r.cover_color,
+  const rows = db.prepare(`SELECT r.id, r.slug, r.title, r.release_type, r.release_date, r.genre, r.cover_color, r.cover_image,
       (SELECT COUNT(*) FROM fans f WHERE f.release_id = r.id) AS fans,
       (SELECT COUNT(*) FROM clicks c WHERE c.release_id = r.id) AS clicks
     FROM releases r WHERE r.user_id = ? ORDER BY r.release_date DESC`).all(req.user.id);
@@ -408,13 +408,13 @@ function buildResults(r) {
 
 // --- Public smart link -------------------------------------------------------------
 app.get('/api/public/r/:slug', (req, res) => {
-  const r = db.prepare(`SELECT r.slug, r.title, r.release_type, r.release_date, r.genre, r.links, r.cover_color, r.story, u.artist_name
+  const r = db.prepare(`SELECT r.slug, r.title, r.release_type, r.release_date, r.genre, r.links, r.cover_color, r.cover_image, r.story, u.artist_name
     FROM releases r JOIN users u ON u.id = r.user_id WHERE r.slug = ?`).get(clean(req.params.slug, 80));
   if (!r) return res.status(404).json({ error: 'This release link does not exist.' });
   const links = JSON.parse(r.links);
   res.json({
     title: r.title, artist: r.artist_name, type: r.release_type, releaseDate: r.release_date,
-    genre: r.genre, color: r.cover_color, story: r.story,
+    genre: r.genre, color: r.cover_color, cover: r.cover_image || null, story: r.story,
     platforms: Object.keys(links).map(p => ({ id: p, label: E.PLATFORM_LABELS[p] }))
   });
 });

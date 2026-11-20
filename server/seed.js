@@ -56,9 +56,11 @@ function seed() {
 
   const DEMO_ARTIST = 'JXXIII';
   const demo = db.prepare('SELECT id, artist_name FROM users WHERE email = ?').get('demo@dropradar.app');
-  if (demo && demo.artist_name === DEMO_ARTIST) return;
+  // Re-seed when the demo release changes (new cover art or details), so existing databases pick it up.
+  const current = demo && db.prepare("SELECT 1 FROM releases WHERE user_id = ? AND cover_image = '/img/covers/jxxiii-in-mind.jpg' AND hometown = 'Atlanta, GA'").get(demo.id);
+  if (current) return;
   if (demo) {
-    // Replace an older demo (the fictional "Ada Nova") on databases that already have one.
+    // Replace an older demo (the fictional "Ada Nova", or an earlier In Mind) on databases that already have one.
     db.prepare('DELETE FROM releases WHERE user_id = ?').run(demo.id);
     db.prepare('DELETE FROM security_log WHERE user_id = ?').run(demo.id);
     db.prepare('DELETE FROM users WHERE id = ?').run(demo.id);
@@ -76,12 +78,12 @@ function seed() {
   const releaseDate = addDays(today, -6); // demo campaign is on day 7
   const demoRelease = {
     title: 'In Mind', genre: 'R&B', moods: ['Romantic', 'Confident', 'Party'], bpm: 108,
-    sounds_like: '', hometown: 'Fort Lauderdale, FL',
+    sounds_like: '', hometown: 'Atlanta, GA',
     story: "I wrote it about staying open to new possibilities in life and love, and raising each other's vibration. A funky, melodic exchange of genius and beautiful knowledge, featuring S777."
   };
   const relId = db.prepare(`INSERT INTO releases
-    (user_id, slug, title, release_type, release_date, genre, moods, bpm, sounds_like, hometown, story, links, cover_color)
-    VALUES (?, ?, ?, 'single', ?, ?, ?, ?, ?, ?, ?, ?, '#8A3FFC')`).run(
+    (user_id, slug, title, release_type, release_date, genre, moods, bpm, sounds_like, hometown, story, links, cover_color, cover_image)
+    VALUES (?, ?, ?, 'single', ?, ?, ?, ?, ?, ?, ?, ?, '#B8865A', '/img/covers/jxxiii-in-mind.jpg')`).run(
     userId, 'jxxiii-in-mind', demoRelease.title, releaseDate, demoRelease.genre,
     JSON.stringify(demoRelease.moods), demoRelease.bpm, demoRelease.sounds_like, demoRelease.hometown, demoRelease.story,
     JSON.stringify({

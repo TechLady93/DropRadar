@@ -8,6 +8,10 @@
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const view = $('#view');
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // Cover artwork when the release has it, otherwise the colour tile with a record graphic.
+  const coverTile = (r, cls) => r.cover_image
+    ? `<span class="${cls} has-art"><img src="${esc(r.cover_image)}" alt="" loading="lazy"></span>`
+    : `<span class="${cls}" data-c="${esc(r.cover_color)}"></span>`;
   const fmtDate = iso => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const fmtLong = iso => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   const todayISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
@@ -160,7 +164,7 @@
         const d = daysBetween(r.release_date, t);
         const when = d < 0 ? `Out in ${-d} day${d === -1 ? '' : 's'}` : d === 0 ? 'Out today' : `Day ${d} after release`;
         return `<a class="release-card" href="/app/release/${r.id}" data-nav>
-          <span class="cover" data-c="${esc(r.cover_color)}"></span>
+          ${coverTile(r, 'cover')}
           <div>
             <h3>${esc(r.title)}</h3>
             <span class="meta-line">${esc(r.genre)} · ${esc(r.release_type)} · ${fmtDate(r.release_date)}</span>
@@ -277,7 +281,7 @@
     view.innerHTML = `
       <a class="back" href="/app" data-nav>← Releases</a>
       <header class="rel-head">
-        <span class="cover cover-lg" data-c="${esc(r.cover_color)}"></span>
+        ${coverTile(r, 'cover cover-lg')}
         <div>
           <p class="eyebrow">${esc(r.genre)} ${esc(r.release_type)}${r.bpm ? ` · ${r.bpm} BPM` : ''}</p>
           <h1>${esc(r.title)}</h1>
