@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node --no-warnings server/index.js",
     "dev": "node --no-warnings --watch server/index.js",
-    "seed": "node --no-warnings server/seed.js"
+    "seed": "node --no-warnings server/seed.js",
+    "test": "node test/run.mjs"
   },
   "author": "Joycelynn Okezie (TechLady93)",
   "license": "MIT",

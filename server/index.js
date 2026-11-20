@@ -74,6 +74,12 @@ const fanLimiter = rateLimit({
   windowMs: 60 * 60_000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false,
   message: { error: 'Too many sign-ups from this network. Try again later.' }
 });
+// The demo button gets its own, roomier limit so a room full of people on one
+// Wi-Fi network (a pitch event, a class) can all open it.
+const demoLimiter = rateLimit({
+  windowMs: 15 * 60_000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false,
+  message: { error: 'The demo is busy right now. Try again in a few minutes.' }
+});
 app.use('/api/', apiLimiter);
 
 // --- CSRF defence: state-changing API calls must carry a custom header.
@@ -135,6 +141,13 @@ function requireAuth(req, res, next) {
   }
 }
 
+// The demo account is shared by every visitor, so it is read-only: nobody can
+// leave junk behind for the next person (or an investor) to see.
+function blockDemo(req, res, next) {
+  if (req.user.is_demo) return res.status(403).json({ error: 'The demo is read-only. Create a free account to try this on your own release.' });
+  next();
+}
+
 // Load a release only if it belongs to the signed-in user (prevents IDOR).
 function ownRelease(req, res) {
   const id = Number(req.params.id);
@@ -193,7 +206,7 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/auth/demo', authLimiter, (req, res) => {
+app.post('/api/auth/demo', demoLimiter, (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get('demo@dropradar.app');
   if (!user) return res.status(500).json({ error: 'Demo account is unavailable.' });
   logSecurity(user.id, 'demo_login', '', ip(req));
@@ -221,7 +234,7 @@ app.get('/api/releases', requireAuth, (req, res) => {
   res.json({ releases: rows });
 });
 
-app.post('/api/releases', requireAuth, (req, res) => {
+app.post('/api/releases', requireAuth, blockDemo, (req, res) => {
   const b = req.body || {};
   const title = clean(b.title, 100);
   const type = ['single', 'EP', 'album'].includes(b.releaseType) ? b.releaseType : 'single';
@@ -252,9 +265,8 @@ app.post('/api/releases', requireAuth, (req, res) => {
   res.status(201).json({ id });
 });
 
-app.delete('/api/releases/:id', requireAuth, (req, res) => {
+app.delete('/api/releases/:id', requireAuth, blockDemo, (req, res) => {
   const r = ownRelease(req, res); if (!r) return;
-  if (req.user.is_demo) return res.status(403).json({ error: 'The demo release cannot be deleted. Create your own account to try this.' });
   db.prepare('DELETE FROM releases WHERE id = ?').run(r.id);
   res.json({ ok: true });
 });
@@ -279,7 +291,7 @@ app.get('/api/releases/:id', requireAuth, (req, res) => {
   });
 });
 
-app.post('/api/releases/:id/tasks/:key', requireAuth, (req, res) => {
+app.post('/api/releases/:id/tasks/:key', requireAuth, blockDemo, (req, res) => {
   const r = ownRelease(req, res); if (!r) return;
   const key = clean(req.params.key, 40);
   if (!/^[a-z0-9_]+$/.test(key)) return res.status(400).json({ error: 'Invalid task.' });
@@ -297,7 +309,7 @@ app.get('/api/releases/:id/pitch/:outletId', requireAuth, (req, res) => {
 });
 
 const PITCH_STATES = ['draft', 'approved', 'sent', 'replied', 'added', 'passed'];
-app.put('/api/releases/:id/pitch/:outletId', requireAuth, (req, res) => {
+app.put('/api/releases/:id/pitch/:outletId', requireAuth, blockDemo, (req, res) => {
   const r = ownRelease(req, res); if (!r) return;
   const outletId = Number(req.params.outletId);
   if (!db.prepare('SELECT 1 FROM outlets WHERE id = ?').get(outletId)) return res.status(404).json({ error: 'Outlet not found.' });
@@ -316,13 +328,60 @@ app.post('/api/scan', requireAuth, (req, res) => {
   const text = String(req.body.text ?? '');
   if (!text.trim()) return res.status(400).json({ error: 'Paste the message you received.' });
   const result = E.scanMessage(text);
-  logSecurity(req.user.id, 'promoter_scan', result.verdict, ip(req));
+  if (!req.user.is_demo) logSecurity(req.user.id, 'promoter_scan', result.verdict, ip(req));
   res.json(result);
 });
 
 app.get('/api/security-log', requireAuth, (req, res) => {
   const rows = db.prepare('SELECT event, detail, created_at FROM security_log WHERE user_id = ? ORDER BY id DESC LIMIT 25').all(req.user.id);
   res.json({ events: rows });
+});
+
+// --- Fans the artist owns ---------------------------------------------------------
+app.get('/api/releases/:id/fans', requireAuth, (req, res) => {
+  const r = ownRelease(req, res); if (!r) return;
+  const fans = db.prepare(`SELECT email, source, created_at, unsubscribed_at FROM fans
+    WHERE release_id = ? ORDER BY created_at DESC, id DESC`).all(r.id);
+  res.json({
+    fans: fans.map(f => ({ email: f.email, source: f.source, joined: f.created_at, unsubscribed: !!f.unsubscribed_at })),
+    subscribed: fans.filter(f => !f.unsubscribed_at).length,
+    unsubscribed: fans.filter(f => f.unsubscribed_at).length
+  });
+});
+
+// Spreadsheet apps run cells that start with = + - @ as formulas, so a fan "email"
+// like =HYPERLINK(...) could attack the artist who opens the export. Neutralise it.
+function csvCell(v) {
+  let s = String(v ?? '');
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+app.get('/api/releases/:id/fans.csv', requireAuth, (req, res) => {
+  const r = ownRelease(req, res); if (!r) return;
+  const base = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+  // Only people who are still subscribed, so an artist can never email someone who left.
+  const fans = db.prepare(`SELECT email, source, created_at, unsub_token FROM fans
+    WHERE release_id = ? AND unsubscribed_at IS NULL ORDER BY created_at, id`).all(r.id);
+  const rows = [['email', 'source', 'signed_up_utc', 'release', 'unsubscribe_link']]
+    .concat(fans.map(f => [f.email, f.source, f.created_at, r.title, `${base}/u/${f.unsub_token}`]));
+  const csv = rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="${r.slug}-fans.csv"`);
+  res.set('Cache-Control', 'no-store');
+  res.send(csv);
+});
+
+// One-click unsubscribe. The token is random and unguessable, so nobody can
+// unsubscribe someone else, and the page reveals nothing about who the fan is.
+app.post('/api/public/unsubscribe', fanLimiter, (req, res) => {
+  const token = clean(req.body.token, 64);
+  if (!/^[a-f0-9]{32}$/.test(token)) return res.status(400).json({ error: 'This unsubscribe link is not valid.' });
+  const fan = db.prepare(`SELECT f.id, f.unsubscribed_at, u.artist_name FROM fans f
+    JOIN releases r ON r.id = f.release_id JOIN users u ON u.id = r.user_id WHERE f.unsub_token = ?`).get(token);
+  if (!fan) return res.status(404).json({ error: 'This unsubscribe link is not valid or has already been used.' });
+  if (!fan.unsubscribed_at) db.prepare("UPDATE fans SET unsubscribed_at = datetime('now') WHERE id = ?").run(fan.id);
+  res.json({ ok: true, artist: fan.artist_name });
 });
 
 // --- Results + anomaly detection -------------------------------------------------
@@ -360,6 +419,9 @@ app.get('/api/public/r/:slug', (req, res) => {
   });
 });
 
+// What a fan agrees to when they sign up. Stored with each sign-up as a record of consent.
+const CONSENT_TEXT = 'v1: Agreed to receive emails from this artist about their music. Can unsubscribe at any time.';
+
 const SOURCES = ['tiktok', 'instagram', 'youtube', 'email', 'curator', 'x', 'facebook', 'direct'];
 const srcOf = v => (SOURCES.includes(v) ? v : 'direct');
 
@@ -369,7 +431,9 @@ app.post('/api/public/r/:slug/fan', fanLimiter, (req, res) => {
   if (req.body.website) return res.json({ ok: true }); // honeypot field: bots fill it, people never see it
   const email = clean(req.body.email, 254).toLowerCase();
   if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
-  db.prepare('INSERT OR IGNORE INTO fans (release_id, email, source) VALUES (?, ?, ?)').run(r.id, email, srcOf(req.body.source));
+  db.prepare(`INSERT INTO fans (release_id, email, source, unsub_token, consent) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(release_id, email) DO UPDATE SET unsubscribed_at = NULL, consent = excluded.consent`)
+    .run(r.id, email, srcOf(req.body.source), crypto.randomBytes(16).toString('hex'), CONSENT_TEXT);
   res.json({ ok: true });
 });
 
@@ -389,6 +453,7 @@ const PUB = path.join(__dirname, '..', 'public');
 app.use(express.static(PUB, { extensions: ['html'], maxAge: IS_PROD ? '1h' : 0 }));
 app.get('/r/:slug', (req, res) => res.sendFile(path.join(PUB, 'link.html')));
 app.get(['/app', '/app/*'], (req, res) => res.sendFile(path.join(PUB, 'app.html')));
+app.get('/u/:token', (req, res) => res.sendFile(path.join(PUB, 'unsubscribe.html')));
 app.use('/api/', (req, res) => res.status(404).json({ error: 'Not found.' }));
 app.use((req, res) => res.status(404).sendFile(path.join(PUB, '404.html')));
 

@@ -96,6 +96,18 @@ CREATE TABLE IF NOT EXISTS security_log (
 );
 `);
 
+// Lightweight migrations for databases created before these columns existed.
+function addColumn(table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+  if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+}
+// Fans: an unguessable token for one-click unsubscribe, when they left, and what they agreed to.
+addColumn('fans', 'unsub_token', 'unsub_token TEXT');
+addColumn('fans', 'unsubscribed_at', 'unsubscribed_at TEXT');
+addColumn('fans', 'consent', "consent TEXT NOT NULL DEFAULT ''");
+db.exec("UPDATE fans SET unsub_token = lower(hex(randomblob(16))) WHERE unsub_token IS NULL");
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS fans_unsub_token ON fans(unsub_token)');
+
 function logSecurity(userId, event, detail = '', ip = '') {
   db.prepare('INSERT INTO security_log (user_id, event, detail, ip) VALUES (?, ?, ?, ?)')
     .run(userId ?? null, event, String(detail).slice(0, 300), String(ip).slice(0, 64));

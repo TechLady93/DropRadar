@@ -29,11 +29,13 @@ I spent 15+ years in independent music, A&R and creative strategy, and I watched
 | **Release analyzer** | Scores short-form video fit from genre, mood and tempo, and recommends where the song is most likely to travel |
 | **Outlet matching** | Scores every playlist, blog, creator, DJ, radio show and community against the song (0–100) and explains why each one fits |
 | **Pitch writer** | Generates a personalized pitch for each outlet, for the artist to edit and approve. Nothing is sent automatically |
-| **30-day rollout plan** | 28 dated steps from four weeks before release to 30 days after, each with a plain-language "why" |
+| **Rollout plan** | Up to 28 dated steps from four weeks before release to 30 days after, each with a plain-language "why" |
+| **30-day content calendar** | One post idea a day for the 30 days after release, with a caption and hashtags, shaped by the song's mood, story, hometown and "sounds like" artists |
 | **Content kit** | Captions per platform, short-form video ideas and hashtags |
 | **Smart link** | One public page per release with platform buttons, fan email capture and source tracking (`?src=tiktok`) |
-| **Results dashboard** | Clicks per day, platforms, traffic sources, fans captured and the pitch pipeline |
-| **Release Protection** | Promoter-message scam scanner, traffic-spike alerts, account security checklist and an account activity log |
+| **Fans you own** | Every fan who signs up on the smart link, with where they came from. Export to CSV for any email tool, with a per-fan unsubscribe link |
+| **Results dashboard** | Smart-link clicks per day, platforms, traffic sources, fans captured and the pitch pipeline |
+| **Release Protection** | Promoter-message scam scanner, smart-link traffic alerts, account security checklist and an account activity log |
 
 ![Results dashboard](docs/results.png)
 
@@ -53,10 +55,12 @@ Security is a core requirement, not an afterthought. This is the part of the pro
 - **Input validation** on every field, request body size limits, and error responses that never leak stack traces.
 - **Bot defence** on the public fan form: honeypot field plus rate limiting.
 - **Audit log** of sign-ins, failures, lockouts and scans, visible to the user.
+- **Fan privacy:** fans see consent text and a privacy policy when they sign up, each fan gets a random one-click unsubscribe token, unsubscribed fans are never exported, and the CSV export neutralises spreadsheet formula injection.
+- **Read-only demo:** the shared demo account can't create, change or delete anything, so one visitor can't change what the next one sees. The demo button has its own rate limit so a room on shared Wi-Fi can all open it.
 
 **Protecting artists (the product's security features)**
 - **Promoter scanner:** flags the patterns behind fake-stream services and scams: guaranteed stream counts, pay-per-stream pricing, paid placement on editorial playlists, requests for passwords or login codes, untraceable payment methods, fake "platform staff" messages, pressure tactics and shortened links.
-- **Spike detection:** flags any day with more than 4× the trailing 7-day average, the pattern artificial-streaming campaigns leave behind, so the artist can report it before the platform penalizes the release.
+- **Link traffic alerts:** flags any day when smart-link clicks are more than 4× the trailing 7-day average (and at least 40). This watches the DropRadar link only, not streams; the alert walks the artist through checking Spotify for Artists for matching fake plays and reporting them. Connecting real streaming data is on the roadmap.
 - **Account checklist:** two-factor login, separate business email, password manager, team access without shared passwords.
 
 ![Release Protection tab](docs/protect.png)
@@ -96,6 +100,12 @@ npm start
 
 Open http://localhost:3000 and choose **Try the live demo**.
 
+Run the test suite (65 end-to-end checks covering every feature and security claim):
+
+```bash
+npm test
+```
+
 Demo login: `demo@dropradar.app` / `DemoDrop!2026`
 
 ## Deploy for free (Render)
@@ -113,7 +123,7 @@ The free tier doesn't keep files between restarts, so the database resets to the
 
 ## Notes on the demo data
 
-All outlets in the demo are **fictional samples**. Clicks, fans and the traffic spike on the demo release are generated sample data, labelled as such in the app.
+The demo runs on a real released single, **"In Mind" by JXXIII feat. S777** (2022), with its real Spotify, Apple Music and YouTube links, used with the artist's permission. The outlets are **fictional samples** until real curators opt in. The campaign dates, clicks, fans and the traffic spike are simulated so every feature has something to show, and the app's demo banner says so.
 
 ## Recognition
 

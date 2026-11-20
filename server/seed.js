@@ -3,7 +3,7 @@
 // real curators, creators and DJs you have permission to contact.
 const bcrypt = require('bcryptjs');
 const { db } = require('./db');
-const { addDays } = require('./engine');
+const { addDays, matchOutlets } = require('./engine');
 
 const OUTLETS = [
   // name, kind, platform, genres, moods, region, reach
@@ -54,24 +54,41 @@ function seed() {
     }
   }
 
-  const demo = db.prepare('SELECT id FROM users WHERE email = ?').get('demo@dropradar.app');
-  if (demo) return;
+  const DEMO_ARTIST = 'JXXIII';
+  const demo = db.prepare('SELECT id, artist_name FROM users WHERE email = ?').get('demo@dropradar.app');
+  if (demo && demo.artist_name === DEMO_ARTIST) return;
+  if (demo) {
+    // Replace an older demo (the fictional "Ada Nova") on databases that already have one.
+    db.prepare('DELETE FROM releases WHERE user_id = ?').run(demo.id);
+    db.prepare('DELETE FROM security_log WHERE user_id = ?').run(demo.id);
+    db.prepare('DELETE FROM users WHERE id = ?').run(demo.id);
+  }
 
   const hash = bcrypt.hashSync('DemoDrop!2026', 12);
   const userId = db.prepare('INSERT INTO users (email, password_hash, artist_name, is_demo) VALUES (?, ?, ?, 1)')
-    .run('demo@dropradar.app', hash, 'Ada Nova').lastInsertRowid;
+    .run('demo@dropradar.app', hash, DEMO_ARTIST).lastInsertRowid;
 
+  // The demo runs on a real, released song: "In Mind" by JXXIII feat. S777 (originally
+  // released September 7, 2022), used with the artist's permission. The links are real.
+  // The campaign dates, clicks, fans and outlets are simulated so every feature has
+  // something to show; the app's demo banner says so.
   const today = new Date().toISOString().slice(0, 10);
-  const releaseDate = addDays(today, -6); // demo release came out 6 days ago
+  const releaseDate = addDays(today, -6); // demo campaign is on day 7
+  const demoRelease = {
+    title: 'In Mind', genre: 'R&B', moods: ['Romantic', 'Confident', 'Party'], bpm: 108,
+    sounds_like: '', hometown: 'Fort Lauderdale, FL',
+    story: "I wrote it about staying open to new possibilities in life and love, and raising each other's vibration. A funky, melodic exchange of genius and beautiful knowledge, featuring S777."
+  };
   const relId = db.prepare(`INSERT INTO releases
     (user_id, slug, title, release_type, release_date, genre, moods, bpm, sounds_like, hometown, story, links, cover_color)
-    VALUES (?, ?, ?, 'single', ?, 'Afrobeats', ?, 104, ?, ?, ?, ?, '#E0662E')`).run(
-    userId, 'ada-nova-ocean-drive', 'Ocean Drive', releaseDate,
-    JSON.stringify(['Romantic', 'Summer', 'Late-night']),
-    'Tems, Ayra Starr, Rema',
-    'Fort Lauderdale, FL',
-    'I wrote it on the beach the week I moved to South Florida, missing Lagos and falling for a new city at the same time.',
-    JSON.stringify({ youtube: 'https://youtube.com', bandcamp: 'https://bandcamp.com', apple: 'https://music.apple.com', audiomack: 'https://audiomack.com', spotify: 'https://open.spotify.com' })
+    VALUES (?, ?, ?, 'single', ?, ?, ?, ?, ?, ?, ?, ?, '#8A3FFC')`).run(
+    userId, 'jxxiii-in-mind', demoRelease.title, releaseDate, demoRelease.genre,
+    JSON.stringify(demoRelease.moods), demoRelease.bpm, demoRelease.sounds_like, demoRelease.hometown, demoRelease.story,
+    JSON.stringify({
+      youtube: 'https://www.youtube.com/watch?v=eEUX3Sojp1s',
+      apple: 'https://music.apple.com/us/album/in-mind-feat-s777-single/1771585489',
+      spotify: 'https://open.spotify.com/track/0BPHmBWhXubdBE9sSPzeuE'
+    })
   ).lastInsertRowid;
 
   // Plan steps already completed in the demo.
@@ -79,19 +96,17 @@ function seed() {
   const insDone = db.prepare('INSERT INTO tasks_done (release_id, task_key) VALUES (?, ?)');
   done.forEach(k => insDone.run(relId, k));
 
-  // Pitch pipeline.
-  const pitchPlan = [
-    ['Late Night Lagos', 'added'], ['Naija New Waves', 'replied'], ['Broward Underground', 'added'],
-    ['Las Olas Sessions', 'sent'], ['Couples Content Co', 'sent'], ['Diaspora Drive', 'passed'],
-    ['DJ Coral Reef', 'added'], ['Soft Life Soul', 'sent'], ['South Florida Showcase', 'approved']
-  ];
-  const insPitch = db.prepare('INSERT INTO pitches (release_id, outlet_id, status) VALUES (?, (SELECT id FROM outlets WHERE name = ?), ?)');
-  pitchPlan.forEach(([n, s]) => insPitch.run(relId, n, s));
+  // Pitch pipeline: the song's nine best-matched outlets, at different stages.
+  const outlets = db.prepare('SELECT * FROM outlets').all();
+  const top = matchOutlets({ ...demoRelease, release_type: 'single' }, outlets).slice(0, 9);
+  const stages = ['added', 'replied', 'added', 'sent', 'sent', 'passed', 'added', 'sent', 'approved'];
+  const insPitch = db.prepare('INSERT INTO pitches (release_id, outlet_id, status) VALUES (?, ?, ?)');
+  top.forEach((o, i) => insPitch.run(relId, o.id, stages[i]));
 
   // Smart-link clicks and fan sign-ups over the past three weeks (demo data).
   const insClick = db.prepare('INSERT INTO clicks (release_id, platform, source, day) VALUES (?, ?, ?, ?)');
-  const insFan = db.prepare('INSERT OR IGNORE INTO fans (release_id, email, source, created_at) VALUES (?, ?, ?, ?)');
-  const platforms = ['youtube', 'youtube', 'audiomack', 'apple', 'spotify', 'bandcamp', 'youtube', 'audiomack'];
+  const insFan = db.prepare("INSERT OR IGNORE INTO fans (release_id, email, source, created_at, unsub_token, consent) VALUES (?, ?, ?, ?, lower(hex(randomblob(16))), 'sample')");
+  const platforms = ['spotify', 'youtube', 'apple', 'spotify', 'youtube', 'spotify', 'apple', 'youtube'];
   const sources = ['tiktok', 'tiktok', 'instagram', 'email', 'curator', 'direct', 'tiktok', 'instagram'];
   let rng = 7;
   const rand = () => { rng = (rng * 9301 + 49297) % 233280; return rng / 233280; };

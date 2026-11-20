@@ -20,3 +20,9 @@ body { min-height: 100%; background: radial-gradient(120% 60% at 50% 0%, color-m
 .sl-ok { background: var(--good-soft); color: var(--good); padding: 12px; border-radius: var(--r-sm); font-weight: 600; text-align: center; }
 .sl-foot { text-align: center; font-size: 0.8rem; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
 .sl-date { font: 600 0.78rem var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+/* Privacy policy and unsubscribe pages reuse the smart-link shell, left-aligned for reading. */
+.legal { max-width: 720px; padding-block: 40px 24px; display: grid; gap: 14px; }
+.legal h1 { font-size: clamp(1.6rem, 5vw, 2.2rem); }
+.legal h2 { font-size: 1.1rem; margin-top: 12px; }
+.legal ul { padding-left: 1.2em; display: grid; gap: 6px; }
+.legal p, .legal li { line-height: 1.6; }
